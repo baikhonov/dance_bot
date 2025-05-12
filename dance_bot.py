@@ -151,6 +151,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 def main():
+    if not TOKEN:
+        raise ValueError("TELEGRAM_TOKEN не задан!")
+        
     application = Application.builder().token(TOKEN).build()
 
     application.add_handler(CommandHandler("start", start))
