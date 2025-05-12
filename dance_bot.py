@@ -1,9 +1,8 @@
-import os
 from telegram import Update, ReplyKeyboardMarkup, InputMediaPhoto, InputMediaVideo
 from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes, filters
 from telegram.helpers import escape_markdown
 
-TOKEN = os.getenv("TELEGRAM_TOKEN")
+TOKEN = "my_token"
 
 # Главное меню
 main_menu_buttons = [["💃🕺 Танцы в паре", "👠 Женский стиль"], ["🧑‍🏫 Индивидуальные занятия"]]
@@ -151,9 +150,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 def main():
-    if not TOKEN:
-        raise ValueError("TELEGRAM_TOKEN не задан!")
-        
     application = Application.builder().token(TOKEN).build()
 
     application.add_handler(CommandHandler("start", start))
