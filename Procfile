@@ -1,0 +1,1 @@
+worker: python dance_bot.py
