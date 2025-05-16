@@ -1,11 +1,21 @@
-from telegram import Update, ReplyKeyboardMarkup, InputMediaPhoto, InputMediaVideo
-from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes, filters
 from telegram.helpers import escape_markdown
+from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes, filters
+from telegram import Update, ReplyKeyboardMarkup, InputMediaPhoto, InputMediaVideo
+import logging
 
-TOKEN = "my_token"
+# Логирование
+logging.basicConfig(
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    level=logging.INFO
+)
+logger = logging.getLogger(__name__)
+
+
+TOKEN = "7759262339:AAEd_szhH3dPBvrs7KrWJOOwqxhzEmRxKeg"
 
 # Главное меню
-main_menu_buttons = [["💃🕺 Танцы в паре", "👠 Женский стиль"], ["🧑‍🏫 Индивидуальные занятия"]]
+main_menu_buttons = [["💃🕺 Танцы в паре", "👠 Женский стиль"], [
+    "🧑‍🏫 Индивидуальные занятия"]]
 main_menu_markup = ReplyKeyboardMarkup(main_menu_buttons, resize_keyboard=True)
 
 # Подменю
@@ -153,9 +163,18 @@ def main():
     application = Application.builder().token(TOKEN).build()
 
     application.add_handler(CommandHandler("start", start))
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+    application.add_handler(MessageHandler(
+        filters.TEXT & ~filters.COMMAND, handle_message))
 
-    application.run_polling()
+    try:
+        application.run_polling(
+            poll_interval=3,  # Интервал опроса сервера
+            timeout=30,       # Таймаут запросов
+            drop_pending_updates=True  # Игнорировать старые сообщения при перезапуске
+        )
+    except Exception as e:
+        logger.error(f"Бот остановлен: {e}")
+        raise  # Передаём ошибку в обёртку
 
 
 if __name__ == "__main__":
