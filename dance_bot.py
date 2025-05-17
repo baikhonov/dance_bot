@@ -1,7 +1,9 @@
-from telegram.helpers import escape_markdown
-from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes, filters
-from telegram import Update, ReplyKeyboardMarkup, InputMediaPhoto, InputMediaVideo
+import time
+import traceback
 import logging
+from telegram.helpers import escape_markdown
+from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
+from telegram import Update, ReplyKeyboardMarkup, InputMediaPhoto, InputMediaVideo
 
 # Логирование
 logging.basicConfig(
@@ -159,23 +161,33 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Пожалуйста, выберите один из пунктов меню ниже 👇", reply_markup=main_menu_markup)
 
 
-def main():
-    application = Application.builder().token(TOKEN).build()
+def create_application():
+    application = ApplicationBuilder().token(TOKEN).build()
 
     application.add_handler(CommandHandler("start", start))
-    application.add_handler(MessageHandler(
-        filters.TEXT & ~filters.COMMAND, handle_message))
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-    try:
-        application.run_polling(
-            poll_interval=3,  # Интервал опроса сервера
-            timeout=30,       # Таймаут запросов
-            drop_pending_updates=True  # Игнорировать старые сообщения при перезапуске
-        )
-    except Exception as e:
-        logger.error(f"Бот остановлен: {e}")
-        raise  # Передаём ошибку в обёртку
+    return application
 
+def main():
+    while True:
+        try:
+            application = create_application()
+            logger.info("Запуск бота...")
+            application.run_polling(
+                poll_interval=3,
+                timeout=30,
+                drop_pending_updates=True
+            )
+        except KeyboardInterrupt:
+            logger.info("Бот остановлен вручную")
+            break
+        except Exception:
+            error_msg = traceback.format_exc()
+            logger.error(f"Ошибка бота:\n{error_msg}")
+            print(f"Ошибка бота:\n{error_msg}")  # или отправь админу, если нужно
+            logger.info("Перезапуск через 10 секунд...")
+            time.sleep(10)
 
 if __name__ == "__main__":
     main()
