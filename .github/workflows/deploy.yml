@@ -18,4 +18,6 @@ jobs:
           script: |
             cd /root/dance_bot
             git pull origin main
+            git log -1 --oneline
+            /root/dance_bot/venv/bin/pip install -r requirements.txt
             systemctl restart dance_bot
