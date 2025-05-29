@@ -1,1 +1,42 @@
 .env
+
+# Виртуальное окружение
+venv/
+
+# Файлы Python кэша
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Логи
+*.log
+
+# Файлы IDE (например, PyCharm)
+.idea/
+.vscode/
+
+# Файлы настроек среды
+*.env
+.env
+
+# Файлы конфигурации Python bytecode
+*.pyo
+*.pyd
+
+# Файлы тестовых отчетов
+htmlcov/
+.coverage
+.tox/
+.nox/
+
+# Кеш pip
+pip-wheel-metadata/
+*.egg-info/
+dist/
+build/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Другие временные файлы
+*.swp
