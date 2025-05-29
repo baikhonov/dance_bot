@@ -247,13 +247,13 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(
             "👩‍💼 <b>Татьяна Тлегенова</b>\n"
             "📞 Телефон: +7 (901) 112-76-46\n"
-            "📩 <a href='https://t.me/tanya_tlegenova'>Telegram</a>\n"
             "📘 <a href='https://vk.com/tanya_tlegenova'>ВКонтакте</a>\n"
+            "📩 <a href='https://t.me/tanya_tlegenova'>Telegram</a>\n"
             "💬 <a href='https://wa.me/79011127646'>WhatsApp</a>\n\n"
             "👨‍💼 <b>Кеулемжай Тлегенов</b>\n"
             "📞 Телефон: +7 (953) 455-21-75\n"
-            "📩 <a href='https://t.me/Keulemzhay_Tlegenov'>Telegram</a>\n"
             "📘 <a href='https://vk.com/ktlegenov'>ВКонтакте</a>\n"
+            "📩 <a href='https://t.me/Keulemzhay_Tlegenov'>Telegram</a>\n"
             "💬 <a href='https://wa.me/79534552175'>WhatsApp</a>\n\n"
             "Вы можете написать или позвонить любому из преподавателей.\n\n"
 
