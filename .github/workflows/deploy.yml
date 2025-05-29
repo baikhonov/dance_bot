@@ -15,7 +15,6 @@ jobs:
           host: ${{ secrets.SERVER_IP }}
           username: root
           key: ${{ secrets.SSH_KEY }}
-          cipher: ed25519
           script: |
             cd /root/dance_bot
             git pull origin main
