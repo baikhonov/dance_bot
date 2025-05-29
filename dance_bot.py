@@ -42,22 +42,23 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def send_location_info(update: Update):
     await update.message.reply_text(
-        "🗺 Адрес: *Новотроицкое шоссе, 10* (2 этаж)\n"
-        "🚪 Вход с *обратной стороны здания*. Поднимайтесь на второй этаж.\n\n"
+        "🗺 Адрес: <b>Новотроицкое шоссе, 10</b> (2 этаж)\n"
+        "🚪 Вход с <b>обратной стороны здания</b>. Поднимайтесь на второй этаж.\n\n"
         "🔗 Карты:\n"
-        "• [Яндекс Карты](https://yandex.ru/maps/-/CHrLEEO7)\n"
-        "• [Google Карты](https://maps.app.goo.gl/gAY7vvHBx5CbuKbB7)\n"
-        "• [2ГИС](https://go.2gis.com/p3kDs)\n\n"
-        "🚖 *Маршруты общественного транспорта:*\n"
-        "1️⃣ Автобусы: *3, 4, 6, 30*\n"
-        "Маршрутки: *16, 16А, 23А, 24, 25, 25Б, 26, 26А, 37, 38, 44, 55*\n"
-        "Трамваи: *1, 3, 5А, 7, 8*\n"
-        "— ост. *Тагильская*, вверх по Новотроицкому шоссе\n"
-        "2️⃣ Маршрут *16А Новосибирская* — ост. *Баня*, далее вверх по Новотроицкому шоссе\n"
-        "Ориентир: маг. *Трансдеталь*, напротив заправки *Башнефть*",
-        parse_mode="Markdown",
+        "• <a href='https://yandex.ru/maps/-/CHrLEEO7'>Яндекс Карты</a>\n"
+        "• <a href='https://maps.app.goo.gl/gAY7vvHBx5CbuKbB7'>Google Карты</a>\n"
+        "• <a href='https://go.2gis.com/p3kDs'>2ГИС</a>\n\n"
+        "🚖 <b>Маршруты общественного транспорта:</b>\n"
+        "1️⃣ Автобусы: <b>3, 4, 6, 30</b>\n"
+        "Маршрутки: <b>16, 16А, 23А, 24, 25, 25Б, 26, 26А, 37, 38, 44, 55</b>\n"
+        "Трамваи: <b>1, 3, 5А, 7, 8</b>\n"
+        "— ост. <b>Тагильская</b>, вверх по Новотроицкому шоссе\n"
+        "2️⃣ Маршрут <b>16А Новосибирская</b> — ост. <b>Баня</b>, далее вверх по Новотроицкому шоссе\n"
+        "Ориентир: маг. <b>Трансдеталь</b>, напротив заправки <b>Башнефть</b>",
+        parse_mode="HTML",
         disable_web_page_preview=True
     )
+
 
     media = [
         InputMediaPhoto(
@@ -153,7 +154,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(
             "🎁 Акция – приведи друга (М) впервые на танцы — не платите за это занятие оба (при условии, что вы оба приходите и друг ни разу не был у нас)\n"
             "✅ Второе по счету парное занятие для парней в понедельник и среду — бесплатно",
-            parse_mode="Markdown"
+            parse_mode="HTML"
         )
 
     elif text in ["💃🕺 Танцы в паре", "👠 Женский стиль", "🧑‍🏫 Индивидуальные занятия"]:
@@ -179,13 +180,13 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await update.message.reply_text(
                     "— 1300₽ — один преподаватель\n"
                     "— 1500₽ — два преподавателя\n"
-                    "⏱ *Продолжительность*: 55 минут\n\n"
+                    "⏱ <b>Продолжительность</b>: 55 минут\n\n"
                     "👥 В паре — до 2 человек\n"
                     "💃 Сольно — до 4 человек\n\n"
-                    "📝 *Запись*: осуществляется по предоплате 500₽\n"
-                    "🚫 *Отмена*: не позднее чем за 3 часа до начала\n"
+                    "📝 <b>Запись</b>: осуществляется по предоплате 500₽\n"
+                    "🚫 <b>Отмена</b>: не позднее чем за 3 часа до начала\n"
                     "❌ При более поздней отмене — предоплата не возвращается",
-                    parse_mode="Markdown"
+                    parse_mode="HTML"
                 )
 
         elif menu == "📅 Расписание":
@@ -216,8 +217,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 )
             elif text == "🧑‍🏫 Индивидуальные занятия":
                 await update.message.reply_text(
-                    "⏱️ Дата и время подбираются индивидуально с  @tanya_tlegenova (Татьяной) и @Keulemzhay_Tlegenov (Кеулемжаем)"
+                    '⏱️ Дата и время подбираются индивидуально с <a href="https://t.me/tanya_tlegenova">Татьяной</a> и <a href="https://t.me/Keulemzhay_Tlegenov">Кеулемжаем</a>',
+                    parse_mode="HTML",
+                    disable_web_page_preview=True
                 )
+
 
     elif text == "⬅️ Назад":
         context.user_data.clear()
