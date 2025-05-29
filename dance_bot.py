@@ -282,24 +282,25 @@ def create_application():
 
 
 def main():
-    while True:
-        try:
-            application = create_application()
-            logger.info("Запуск бота...")
-            application.run_polling(
-                poll_interval=3,
-                timeout=30,
-                drop_pending_updates=True
-            )
-        except KeyboardInterrupt:
-            logger.info("Бот остановлен вручную")
-            break
-        except Exception:
-            error_msg = traceback.format_exc()
-            logger.error(f"Ошибка бота:\n{error_msg}")
-            print(f"Ошибка бота:\n{error_msg}")
-            logger.info("Перезапуск через 10 секунд...")
-            time.sleep(10)
+    try:
+        application = create_application()
+        logger.info("Запуск бота...")
+
+        application.run_polling(
+            poll_interval=3,
+            timeout=30,
+            drop_pending_updates=True
+        )
+
+    except KeyboardInterrupt:
+        logger.info("Бот остановлен вручную")
+
+    except Exception:
+        error_msg = traceback.format_exc()
+        logger.error(f"Ошибка бота:\n{error_msg}")
+        print(f"Ошибка бота:\n{error_msg}")
+        # Без sleep — пусть systemd решает, когда перезапускать
+        raise  # Важно! Исключение поднимается наверх → systemd увидит сбой
 
 
 if __name__ == "__main__":
