@@ -115,7 +115,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode="HTML"
         )
 
-
         await update.message.reply_text(
             "<b>У вас такое расписание, а я работаю посменно, я не смогу ходить часто. Есть ли смысл ходить?</b>\n"
             "Конечно. Даже 1–2 занятия в неделю дают результат. Можно чередовать дни и выбирать удобные. "
@@ -146,7 +145,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
         return
-
 
     elif text == "📍 Адрес":
         await send_location_info(update)
@@ -221,27 +219,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     "⏱️ Дата и время подбираются индивидуально с  @tanya_tlegenova (Татьяной) и @Keulemzhay_Tlegenov (Кеулемжаем)"
                 )
 
-
-        elif menu == "❓ Частые вопросы":
-            if text == "💃🕺 Танцы в паре":
-                await update.message.reply_text(
-                    "❓ FAQ — Танцы в паре:\n\n"
-                    "1. Без партнёра? — Нет!\n"
-                    "2. Сменка? — Обязательно."
-                )
-            elif text == "👠 Женский стиль":
-                await update.message.reply_text(
-                    "❓ FAQ — Женский стиль:\n\n"
-                    "1. Без каблуков можно? — Да!\n"
-                    "2. Форма? — Удобная одежда."
-                )
-            elif text == "🧑‍🏫 Индивидуальные занятия":
-                await update.message.reply_text(
-                    "❓ FAQ — Индивидуальные занятия:\n\n"
-                    "1. Когда можно записаться? — В любой день по договорённости\n"
-                    "2. Сколько человек в группе? — До 4 (сольно) / до 2 (в паре)."
-                )
-
     elif text == "⬅️ Назад":
         context.user_data.clear()
         await update.message.reply_text("Вы вернулись в главное меню. Выберите пункт:", reply_markup=main_menu_markup)
@@ -304,7 +281,6 @@ def main():
         print(f"Ошибка бота:\n{error_msg}")
         # Без sleep — пусть systemd решает, когда перезапускать
         raise  # Важно! Исключение поднимается наверх → systemd увидит сбой
-
 
 if __name__ == "__main__":
     main()
