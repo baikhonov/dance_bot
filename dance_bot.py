@@ -1,9 +1,11 @@
+import os
 import time
 import traceback
 import logging
 from telegram.helpers import escape_markdown
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
 from telegram import Update, ReplyKeyboardMarkup, InputMediaPhoto, InputMediaVideo
+from dotenv import load_dotenv
 
 # Логирование
 logging.basicConfig(
@@ -12,7 +14,9 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-TOKEN = "7759262339:AAEd_szhH3dPBvrs7KrWJOOwqxhzEmRxKeg"
+load_dotenv()  # Загружает переменные из .env
+
+TOKEN = os.getenv("TELEGRAM_TOKEN")
 
 # Главное меню
 main_menu_buttons = [
