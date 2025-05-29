@@ -236,7 +236,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await update.message.reply_text(
                     "❓ FAQ — Индивидуальные занятия:\n\n"
                     "1. Когда можно записаться? — В любой день по договорённости\n"
-                    "2. Сколько человек в группе? — До 4 (сольно) / до 2 (в паре)"
+                    "2. Сколько человек в группе? — До 4 (сольно) / до 2 (в паре)."
                 )
 
     elif text == "⬅️ Назад":
