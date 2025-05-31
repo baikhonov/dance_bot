@@ -386,7 +386,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         for group_num, items in groups.items():
             message = "\n\n".join(
                 f"<b>{q['question']}</b>\n{q['answer']}" for q in items)
-            await update.message.reply_text(message, parse_mode="HTML")
+            await update.message.reply_text(message, parse_mode="HTML", disable_web_page_preview=True)
         return
 
     if text == "Новый набор и акции":
