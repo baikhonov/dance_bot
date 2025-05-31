@@ -1,24 +1,262 @@
 import os
-import time
-import traceback
+import re
 import logging
-from telegram.helpers import escape_markdown
-from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
 from telegram import Update, ReplyKeyboardMarkup, InputMediaPhoto, InputMediaVideo
+from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
 from dotenv import load_dotenv
 
-# Логирование
+# Настройка логгирования
 logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s',
     level=logging.INFO
 )
 logger = logging.getLogger(__name__)
 
-load_dotenv()  # Загружает переменные из .env
-
+load_dotenv()
 TOKEN = os.getenv("TELEGRAM_TOKEN")
 
-# Главное меню
+# Единая база данных бота
+BOT_DATA = {
+    "prices": {
+        "couple": {
+            "title": "💃🕺 Танцы в паре",
+            "items": [
+                "✅ Пробное – 300р",
+                "✅ Пробное в паре (М+Ж) – 500р",
+                "✅ Разовое занятие – 400р",
+                "💃🕺 Абонемент 4 занятия – 1400р",
+                "💃🕺 Абонемент 8 занятий – 2400р",
+                "Абонемент действует 30 календарных дней с момента первого посещения. Возврату и обмену не подлежит"
+            ],
+            "keywords": ["парные", "бачата", "партнер", "партнерша", "пара", "сколько", "абонемент", "цена", "стоимость"]
+        },
+        "solo": {
+            "title": "👠 Женский стиль",
+            "items": [
+                "✅ Разовое занятие — 300 рублей",
+                "🙅‍♀️ Абонементов на это направление нет"
+            ],
+            "keywords": ["соло", "женск", "девуш", "леди", "сколько", "абонемент", "цена", "стоимость"]
+        },
+        "individual": {
+            "title": "🧑‍🏫 Индивидуальные занятия",
+            "items": [
+                "— 1300₽ — один преподаватель",
+                "— 1500₽ — два преподавателя",
+                "⏱ Продолжительность: 55 минут",
+                "👥 В паре — до 2 человек",
+                "💃 Сольно — до 4 человек",
+                "📝 Запись: осуществляется по предоплате 500₽",
+                "🚫 Отмена: не позднее чем за 3 часа до начала",
+                "❌ При более поздней отмене — предоплата не возвращается"
+            ],
+            "keywords": ["индивид", "персон", "частн", "сколько", "цена", "стоимость"]
+        }
+    },
+    "schedule": {
+        "couple": {
+            "title": "💃🕺 Танцы в паре",
+            "items": [
+                "🟢 Понедельник, Среда:",
+                "   — 19:30-20:30 (Продолжающая группа)",
+                "   — 20:30-21:30 (Продолжающая группа)\n\n",
+                "🟡 Вторник, Четверг:",
+                "   — 19:30-20:30 (занятие для парней и девушек, отработка навыков сольного танца)",
+                "   — 20:30-21:30 (Начинающая группа)\n\n",
+                "🔵 Суббота:",
+                "   — 19:00-20:00 (Начинающая группа)",
+                "   — 20:00-23:00 Тематическая вечеринка\n\n",
+                "🟣 Воскресенье:",
+                "   — 19:00-22:00 Танцы на улице (бесплатно, проводятся мастер-классы)"
+            ],
+            "keywords": ["парные", "бачата", "партнер", "партнерша", "пара", "расписание", "когда"]
+        },
+        "solo": {
+            "title": "👠 Женский стиль",
+            "items": [
+                "🟡 Вторник, Четверг:",
+                "   — 19:30-20:30 (занятие для парней и девушек, отработка навыков сольного танца)\n\n",
+                "🟣 Пятница (только леди):",
+                "   — 18:30-19:30 начинающие",
+                "   — 19:30-20:30 старшие\n\n",
+                "🟣 Воскресенье (только леди):",
+                "   — 14:00-15:00 начинающие",
+                "   — 15:00-16:00 старшие"
+            ],
+            "keywords": ["соло", "женск", "девуш", "леди", "расписание", "когда"]
+        },
+        "individual": {
+            "title": "🧑‍🏫 Индивидуальные занятия",
+            "items": [
+                '⏱️ Дата и время подбираются индивидуально с <a href="https://t.me/tanya_tlegenova">Татьяной</a> и <a href="https://t.me/Keulemzhay_Tlegenov">Кеулемжаем</a>'
+            ],
+            "keywords": ["индивид", "персон", "частн", "расписание", "когда"]
+        }
+    },
+    "address": {
+        "text": "🗺 Адрес: <b>Новотроицкое шоссе, 10</b> (2 этаж)\n🚪 Вход с <b>обратной стороны здания</b>. Поднимайтесь на второй этаж.\n\n"
+                "🔗 Карты:\n"
+                "• <a href='https://yandex.ru/maps/-/CHrLEEO7'>Яндекс Карты</a>\n"
+                "• <a href='https://maps.app.goo.gl/gAY7vvHBx5CbuKbB7'>Google Карты</a>\n"
+                "• <a href='https://go.2gis.com/p3kDs'>2ГИС</a>\n\n"
+                "🚖 <b>Маршруты общественного транспорта:</b>\n"
+                "1️⃣ Автобусы: <b>3, 4, 6, 30</b>\n"
+                "Маршрутки: <b>16, 16А, 23А, 24, 25, 25Б, 26, 26А, 37, 38, 44, 55</b>\n"
+                "Трамваи: <b>1, 3, 5А, 7, 8</b>\n"
+                "— ост. <b>Тагильская</b>, вверх по Новотроицкому шоссе\n"
+                "2️⃣ Маршрут <b>16А Новосибирская</b> — ост. <b>Баня</b>, далее вверх по Новотроицкому шоссе\n"
+                "Ориентир: маг. <b>Трансдеталь</b>, напротив заправки <b>Башнефть</b>",
+        "keywords": ["адрес", "где", "метро", "доехать", "местоположение", "город"],
+        "media": [
+            {
+                "type": "photo",
+                "media": "AgACAgIAAxkBAAICrGggKvUpLL-bc9e8d46S2fsYTNf7AAL-8TEbCEkAAUnKnJXb1hfUYQEAAwIAA3gAAzYE",
+                "caption": "Фото здания спереди"
+            },
+            {
+                "type": "photo",
+                "media": "AgACAgIAAxkBAAICs2ggK4fpSXoUpP1WTWQQxOJ3Q75GAAL_8TEbCEkAAUl2lhNGB2y5ogEAAwIAA3kAAzYE",
+                "caption": "Фото парковки"
+            },
+            {
+                "type": "video",
+                "media": "BAACAgIAAxkBAAICtWggK7nKjKiCN3WAATvuBuJNrg6CAALCcgACCEkAAUn-A2e8HBdrNTYE",
+                "caption": "Видео маршрута"
+            }
+        ]
+    },
+    "faq": {
+        "items": [
+            {
+                "question": "Вы находитесь в Орске?",
+                "answer": "Да! Мы находимся в Орске по адресу Новотроицкое шоссе, 10 (от Новотроицка тоже недалеко).",
+                "group": 1,
+                "keywords": ["местоположение", "где вы", "адрес", "орск", "новотроицк"]
+            },
+            {
+                "question": "А можно без партнёра на парные?",
+                "answer": 'Да, можно, но лучше уточнить у  <a href="https://t.me/tanya_tlegenova">Татьяны</a>.',
+                "group": 1,
+                "keywords": ["без партнёра", "нет партнёра", "одному", "парные", "одна", "один"]
+            },
+            {
+                "question": "Что нужно брать с собой на занятие?",
+                "answer": "Сменную обувь (кроссовки, если есть, то туфли, любую обувь с гнущейся подошвой).",
+                "group": 1,
+                "keywords": ["что взять", "одежда", "обувь", "с собой", "форма"]
+            },
+            {
+                "question": "А занятия сколько длятся по времени?",
+                "answer": "Групповое - 60 минут, индивидуальное — 55 минут ⏱️",
+                "group": 1,
+                "keywords": ["длительность", "время", "сколько длится", "продолжительность"]
+            },
+            {
+                "question": "Мне 38 лет, берёте?",
+                "answer": "Да. Нашим ученикам от 18 до 60+.",
+                "group": 1,
+                "keywords": ["возраст", "мне лет", "берёте ли", "старше", "подхожу ли"]
+            },
+            {
+                "question": "А я деревянный…",
+                "answer": "Это поправимо! У нас как раз всё для тех, кто начинает с нуля 😊",
+                "group": 1,
+                "keywords": ["деревянный", "неловкий", "начинающий", "с нуля", "не умею танцевать"]
+            },
+            {
+                "question": "Я хочу на парные танцы, но мне, наверное, сначала надо соло?",
+                "answer": "Не обязательно.",
+                "group": 1,
+                "keywords": ["соло перед парными", "нужно ли соло", "сначала соло", "парные"]
+            },
+            {
+                "question": "Можно просто прийти посмотреть?",
+                "answer": "Можно, но лучше прийти и попробовать.",
+                "group": 1,
+                "keywords": ["прийти посмотреть", "можно глянуть", "без участия", "ознакомиться"]
+            },
+            {
+                "question": "Чем занимается ваша школа? Как проходят занятия?",
+                "answer": "На парных занятиях мы учим <b>импровизировать</b> — чувствовать музыку и партнёра без заученных движений. А на соло (женском стиле) ставим красивые, выразительные хореографии, которые развивают пластику, осанку и уверенность.",
+                "group": 1,
+                "keywords": ["чем занимаетесь", "как проходят", "чему учите", "о школе", "занятия"]
+            },
+            {
+                "question": "Нужна ли специальная обувь для занятий?",
+                "answer": "Нет.",
+                "group": 1,
+                "keywords": ["специальная обувь", "нужна ли обувь", "обувь", "танцы"]
+            },
+            {
+                "question": "У вас такое расписание, а я работаю посменно, я не смогу ходить часто. Есть ли смысл ходить?",
+                "answer": "Конечно. Даже 1–2 занятия в неделю дают результат. Можно чередовать дни и выбирать удобные. А ещё есть индивидуальные занятия.",
+                "group": 2,
+                "keywords": ["посменно", "редко", "не часто", "заниматься редко", "график"]
+            },
+            {
+                "question": "Вы танцуете только бачату?",
+                "answer": "Да! В бачате столько нюансов, что в неё легко влюбиться и изучать годами ✨.",
+                "group": 2,
+                "keywords": ["бачата", "только бачата", "вид танцев", "что танцуете"]
+            },
+            {
+                "question": "А что такое соло?",
+                "answer": "Соло — это занятия без партнёра/партнёрши. Вы учитесь красиво танцевать, развиваете пластику и координацию.",
+                "group": 2,
+                "keywords": ["соло", "женский стиль", "без партнёра", "одиночные"]
+            },
+            {
+                "question": "Как проходят вечеринки?",
+                "answer": "Вечеринки с дресс-кодом/тематические (в определённом стиле или цвете, например, всё чёрное, яркое или в пижамах 😊). Танцуем три часа без алкоголя. С собой приносим вкусняшки на стол. Часто проводим конкурсы, игры, квесты. Каждая суббота по-своему особенная. 😊",
+                "group": 2,
+                "keywords": ["вечеринки", "танцы вечером", "мероприятия", "суббота", "вечер"]
+            },
+            {
+                "question": "Какая активность есть вне студии?",
+                "answer": "Мы организуем выезды в другие города, на природу.",
+                "group": 2,
+                "keywords": ["вне студии", "поездки", "выезды", "на природу", "поездка"]
+            },
+            {
+                "question": "Проводите ли вы мастер-класс или программу на праздники и мероприятия?",
+                "answer": "Да, проводим. Условия обговариваются индивидуально.",
+                "group": 2,
+                "keywords": ["мастер-класс", "праздники", "мероприятия", "выступление", "программа"]
+            },
+            {
+                "question": "А свадебные танцы ставите?",
+                "answer": "Да.",
+                "group": 2,
+                "keywords": ["свадьба", "свадебный танец", "первый танец", "свадебные", "постановка"]
+            }
+        ]
+    },
+    "promotions": {
+        "text": "🎁 Акция – приведи друга (М) впервые на танцы — не платите за это занятие оба (при условии, что вы оба приходите и друг ни разу не был у нас)\n"
+                "✅ Второе по счету парное занятие для парней в понедельник и среду — бесплатно",
+        "keywords": ["акция", "скидка", "промо", "набор"]
+    },
+    "contacts": {
+        "text": "👩‍💼 <b>Татьяна Тлегенова</b>\n"
+                "📞 Телефон: +7 (901) 112-76-46\n"
+                "📘 <a href='https://vk.com/tanya_tlegenova'>ВКонтакте</a>\n"
+                "📩 <a href='https://t.me/tanya_tlegenova'>Telegram</a>\n"
+                "💬 <a href='https://wa.me/79011127646'>WhatsApp</a>\n\n"
+                "👨‍💼 <b>Кеулемжай Тлегенов</b>\n"
+                "📞 Телефон: +7 (953) 455-21-75\n"
+                "📘 <a href='https://vk.com/ktlegenov'>ВКонтакте</a>\n"
+                "📩 <a href='https://t.me/Keulemzhay_Tlegenov'>Telegram</a>\n"
+                "💬 <a href='https://wa.me/79534552175'>WhatsApp</a>\n\n"
+                "<b>Аккаунты студии BachataManía</b>\n"
+                "<a href='https://t.me/bachata_orsk'>Мы в Telegram</a>\n"
+                "<a href='https://vk.com/bachatamania_56'>Мы в ВК</a>\n"
+                "<a href='https://t.me/+wQ6vcAPYPRVlNTYy'>Женское соло</a>\n"
+                "Подпишись! 😉",
+        "keywords": ["контакты", "связь", "телефон", "преподаватель"]
+    }
+}
+
+# Клавиатуры
 main_menu_buttons = [
     ["💸 Цены", "📍 Адрес"],
     ["📅 Расписание", "❓ Частые вопросы"],
@@ -26,7 +264,6 @@ main_menu_buttons = [
 ]
 main_menu_markup = ReplyKeyboardMarkup(main_menu_buttons, resize_keyboard=True)
 
-# Подменю направлений
 direction_buttons = [
     ["💃🕺 Танцы в паре", "👠 Женский стиль"],
     ["🧑‍🏫 Индивидуальные занятия"],
@@ -41,250 +278,147 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def send_location_info(update: Update):
-    await update.message.reply_text(
-        "🗺 Адрес: <b>Новотроицкое шоссе, 10</b> (2 этаж)\n"
-        "🚪 Вход с <b>обратной стороны здания</b>. Поднимайтесь на второй этаж.\n\n"
-        "🔗 Карты:\n"
-        "• <a href='https://yandex.ru/maps/-/CHrLEEO7'>Яндекс Карты</a>\n"
-        "• <a href='https://maps.app.goo.gl/gAY7vvHBx5CbuKbB7'>Google Карты</a>\n"
-        "• <a href='https://go.2gis.com/p3kDs'>2ГИС</a>\n\n"
-        "🚖 <b>Маршруты общественного транспорта:</b>\n"
-        "1️⃣ Автобусы: <b>3, 4, 6, 30</b>\n"
-        "Маршрутки: <b>16, 16А, 23А, 24, 25, 25Б, 26, 26А, 37, 38, 44, 55</b>\n"
-        "Трамваи: <b>1, 3, 5А, 7, 8</b>\n"
-        "— ост. <b>Тагильская</b>, вверх по Новотроицкому шоссе\n"
-        "2️⃣ Маршрут <b>16А Новосибирская</b> — ост. <b>Баня</b>, далее вверх по Новотроицкому шоссе\n"
-        "Ориентир: маг. <b>Трансдеталь</b>, напротив заправки <b>Башнефть</b>",
-        parse_mode="HTML",
-        disable_web_page_preview=True
-    )
+    address = BOT_DATA["address"]
+    await update.message.reply_text(address["text"], parse_mode="HTML", disable_web_page_preview=True)
+
+    media_group = []
+    for media in address["media"]:
+        if media["type"] == "photo":
+            media_group.append(InputMediaPhoto(
+                media["media"], caption=media["caption"]))
+        else:
+            media_group.append(InputMediaVideo(
+                media["media"], caption=media["caption"]))
+
+    await update.message.reply_media_group(media_group)
 
 
-    media = [
-        InputMediaPhoto(
-            media="AgACAgIAAxkBAAICrGggKvUpLL-bc9e8d46S2fsYTNf7AAL-8TEbCEkAAUnKnJXb1hfUYQEAAwIAA3gAAzYE", caption="Фото здания спереди"),
-        InputMediaPhoto(
-            media="AgACAgIAAxkBAAICs2ggK4fpSXoUpP1WTWQQxOJ3Q75GAAL_8TEbCEkAAUl2lhNGB2y5ogEAAwIAA3kAAzYE", caption="Фото парковки"),
-        InputMediaVideo(
-            media="BAACAgIAAxkBAAICtWggK7nKjKiCN3WAATvuBuJNrg6CAALCcgACCEkAAUn-A2e8HBdrNTYE", caption="Видео маршрута")
-    ]
+async def process_free_text(text):
+    text = text.lower()
+    responses = []
 
-    await update.message.reply_media_group(media)
+    # Собираем все возможные ответы из всех категорий
+    for category, category_data in BOT_DATA.items():
+        # Обработка цен и расписания
+        if category in ["prices", "schedule"]:
+            for direction, direction_data in category_data.items():
+                # Проверяем все ключевые слова для этого направления
+                for keyword in direction_data["keywords"]:
+                    if re.search(rf'\b{re.escape(keyword)}', text):
+                        response = f"{direction_data['title']}:\n\n" + \
+                            "\n".join(direction_data["items"])
+                        if response not in responses:  # Избегаем дубликатов
+                            responses.append(response)
+                        break  # Прерываем после первого совпадения в этом направлении
+
+        # Обработка адреса, акций и контактов
+        elif category in ["address", "promotions", "contacts"]:
+            for keyword in category_data["keywords"]:
+                if re.search(rf'\b{re.escape(keyword)}', text):
+                    if category_data["text"] not in responses:
+                        responses.append(category_data["text"])
+                    break
+
+        # Обработка FAQ
+        elif category == "faq":
+            for item in category_data["items"]:
+                for keyword in item["keywords"]:
+                    if re.search(rf'\b{re.escape(keyword)}', text):
+                        faq_response = f"<b>{item['question']}</b>\n{item['answer']}"
+                        if faq_response not in responses:
+                            responses.append(faq_response)
+                        break
+
+    # Формируем итоговый ответ
+    if not responses:
+        return "Пожалуйста, выберите один из пунктов меню ниже 👇"
+
+    if len(responses) == 1:
+        return responses[0]
+
+    # Для нескольких ответов добавляем заголовок и разделители
+    header = "🔍 Вот что я нашел по вашему запросу:\n\n"
+    separator = "\n\n――――――\n\n"
+    return header + separator.join(responses[:3])  # Ограничиваем 3 ответами
 
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
-    direction = context.user_data.get("direction")
+    user_data = context.user_data
 
+    # Обработка кнопок главного меню
     if text in ["💸 Цены", "📅 Расписание"]:
-        context.user_data["menu"] = text
+        user_data["menu"] = text
         await update.message.reply_text("Выберите направление:", reply_markup=direction_markup)
-
-    elif text == "❓ Частые вопросы":
-        await update.message.reply_text(
-            "<b>Вы находитесь в Орске?</b>\n"
-            "Да! Мы находимся в Орске по адресу Новотроицкое шоссе, 10 (от Новотроицка тоже недалеко).\n\n"
-
-            "<b>А можно без партнёра на парные?</b>\n"
-            "Да, можно, но лучше уточнить у @tanya_tlegenova (Татьяны)\n\n"
-
-            "<b>Что нужно брать с собой на занятие?</b>\n"
-            "Сменную обувь (кроссовки, если есть, то туфли, любую обувь с гнущейся подошвой).\n\n"
-
-            "<b>А занятия сколько длятся по времени?</b>\n"
-            "Групповое - 60 минут, индивидуальное —  55 минут ⏱️\n\n"
-
-            "<b>Мне 38 лет, берёте?</b>\n"
-            "Да. Нашим ученикам от 18 до 60+.\n\n"
-
-            "<b>А я деревянный…</b>\n"
-            "Это поправимо! У нас как раз всё для тех, кто начинает с нуля 😊\n\n"
-
-            "<b>Я хочу на парные танцы, но мне, наверное, сначала надо соло?</b>\n"
-            "Не обязательно.\n\n"
-
-            "<b>Можно просто прийти посмотреть?</b>\n"
-            "Можно, но лучше прийти и попробовать.\n\n"
-            
-            "<b>Чем занимается ваша школа? Как проходят занятия?</b>\n"
-            "На парных занятиях мы учим <b>импровизировать</b> — чувствовать музыку и партнёра без заученных движений. "
-            "А на соло (женском стиле) ставим красивые, выразительные хореографии, которые развивают пластику, осанку и уверенность.\n\n"
-
-            "<b>Нужна ли специальная обувь для занятий?</b>\n"
-            "Нет."
-            ,
-            parse_mode="HTML"
-        )
-
-        await update.message.reply_text(
-            "<b>У вас такое расписание, а я работаю посменно, я не смогу ходить часто. Есть ли смысл ходить?</b>\n"
-            "Конечно. Даже 1–2 занятия в неделю дают результат. Можно чередовать дни и выбирать удобные. "
-            "А ещё есть индивидуальные занятия.\n\n"
-
-            "<b>Вы танцуете только бачату?</b>\n"
-            "Да! В бачате столько нюансов, что в неё легко влюбиться и изучать годами ✨.\n\n"
-            
-            "<b>А что такое соло?</b>\n"
-            "Соло — это занятия без партнёра/партнёрши. Вы учитесь красиво танцевать, развиваете пластику и координацию.\n\n"
-            
-            "<b>Как проходят вечеринки?</b>\n"
-            "Вечеринки с дресс-кодом/тематические (в определённом стиле или цвете, например, всё чёрное, яркое или в пижамах 😊). "
-            "Танцуем три часа без алкоголя."
-            "С собой приносим вкусняшки на стол. Часто проводим конкурсы, игры, квесты. "
-            "Каждая суббота по-своему особенная. 😊\n\n"
-
-            "<b>Какая активность есть вне студии?</b>\n"
-            "Мы организуем выезды в другие города, на природу.\n\n"
-
-            "<b>Проводите ли вы мастер-класс или программу на праздники и мероприятия?</b>\n"
-            "Да, проводим. Условия обговариваются индивидуально.\n\n"
-
-            "<b>А свадебные танцы ставите?</b>\n"
-            "Да.\n\n"
-            ,
-            parse_mode="HTML"
-        )
-
         return
 
-    elif text == "📍 Адрес":
-        await send_location_info(update)
-
-    elif text == "Новый набор и акции":
-        await update.message.reply_text(
-            "🎁 Акция – приведи друга (М) впервые на танцы — не платите за это занятие оба (при условии, что вы оба приходите и друг ни разу не был у нас)\n"
-            "✅ Второе по счету парное занятие для парней в понедельник и среду — бесплатно",
-            parse_mode="HTML"
-        )
-
-    elif text in ["💃🕺 Танцы в паре", "👠 Женский стиль", "🧑‍🏫 Индивидуальные занятия"]:
-        context.user_data["direction"] = text
-        menu = context.user_data.get("menu")
+    # Обработка кнопок направлений
+    if text in ["💃🕺 Танцы в паре", "👠 Женский стиль", "🧑‍🏫 Индивидуальные занятия"]:
+        user_data["direction"] = text
+        menu = user_data.get("menu")
 
         if menu == "💸 Цены":
-            if text == "💃🕺 Танцы в паре":
-                await update.message.reply_text(
-                    "✅ Пробное – 300р\n"
-                    "✅ Пробное в паре (М+Ж) – 500р\n"
-                    "✅ Разовое занятие – 400р\n"
-                    "💃🕺 Абонемент 4 занятия – 1400р\n"
-                    "💃🕺 Абонемент 8 занятий – 2400р\n"
-                    "Абонемент действует 30 календарных дней с момента первого посещения. Возврату и обмену не подлежит"
-                )
-            elif text == "👠 Женский стиль":
-                await update.message.reply_text(
-                    "✅ Разовое занятие — 300 рублей\n"
-                    "🙅‍♀️ Абонементов на это направление нет"
-                )
-            elif text == "🧑‍🏫 Индивидуальные занятия":
-                await update.message.reply_text(
-                    "— 1300₽ — один преподаватель\n"
-                    "— 1500₽ — два преподавателя\n"
-                    "⏱ <b>Продолжительность</b>: 55 минут\n\n"
-                    "👥 В паре — до 2 человек\n"
-                    "💃 Сольно — до 4 человек\n\n"
-                    "📝 <b>Запись</b>: осуществляется по предоплате 500₽\n"
-                    "🚫 <b>Отмена</b>: не позднее чем за 3 часа до начала\n"
-                    "❌ При более поздней отмене — предоплата не возвращается",
-                    parse_mode="HTML"
-                )
-
+            direction_key = "couple" if text == "💃🕺 Танцы в паре" else "solo" if text == "👠 Женский стиль" else "individual"
+            data = BOT_DATA["prices"][direction_key]
+            await update.message.reply_text("\n".join(data["items"]))
         elif menu == "📅 Расписание":
-            if text == "💃🕺 Танцы в паре":
-                await update.message.reply_text(
-                    "🟢 Понедельник, Среда:\n"
-                    "   — 19:30-20:30 (Продолжающая группа)\n"
-                    "   — 20:30-21:30 (Продолжающая группа)\n\n"
-                    "🟡 Вторник, Четверг:\n"
-                    "   — 19:30-20:30 (занятие для парней и девушек, отработка навыков сольного танца)\n"
-                    "   — 20:30-21:30 (Начинающая группа)\n\n"
-                    "🔵 Суббота:\n"
-                    "   — 19:00-20:00 (Начинающая группа)\n"
-                    "   — 20:00-23:00 Тематическая вечеринка (без алкоголя)\n\n"
-                    "🟣 Воскресенье:\n"
-                    "   — 19:00-22:00 Танцы на улице (бесплатно, проводятся мастер-классы)"
-                )
-            elif text == "👠 Женский стиль":
-                await update.message.reply_text(
-                    "🟡 Вторник, Четверг:\n"
-                    "   — 19:30-20:30 (занятие для парней и девушек, отработка навыков сольного танца)\n\n"
-                    "🟣 Пятница (только леди):\n"
-                    "   — 18:30-19:30 начинающие\n"
-                    "   — 19:30-20:30 старшие\n\n"
-                    "🟣 Воскресенье (только леди):\n"
-                    "   — 14:00-15:00 начинающие\n"
-                    "   — 15:00-16:00 старшие"
-                )
-            elif text == "🧑‍🏫 Индивидуальные занятия":
-                await update.message.reply_text(
-                    '⏱️ Дата и время подбираются индивидуально с <a href="https://t.me/tanya_tlegenova">Татьяной</a> и <a href="https://t.me/Keulemzhay_Tlegenov">Кеулемжаем</a>',
-                    parse_mode="HTML",
-                    disable_web_page_preview=True
-                )
+            direction_key = "couple" if text == "💃🕺 Танцы в паре" else "solo" if text == "👠 Женский стиль" else "individual"
+            if direction_key in BOT_DATA["schedule"]:
+                data = BOT_DATA["schedule"][direction_key]
+                await update.message.reply_text("\n".join(data["items"]),
+                                                parse_mode='HTML',
+                                                disable_web_page_preview=True)
+        return
 
+    # Обработка других кнопок
+    if text == "📍 Адрес":
+        await send_location_info(update)
+        return
 
-    elif text == "⬅️ Назад":
-        context.user_data.clear()
-        await update.message.reply_text("Вы вернулись в главное меню. Выберите пункт:", reply_markup=main_menu_markup)
+    if text == "❓ Частые вопросы":
+        groups = {}
+        for item in BOT_DATA["faq"]["items"]:
+            group = item.get("group", 1)
+            if group not in groups:
+                groups[group] = []
+            groups[group].append(item)
 
-    elif text == "Cвязь с нами":
-        await update.message.reply_text(
-            "👩‍💼 <b>Татьяна Тлегенова</b>\n"
-            "📞 Телефон: +7 (901) 112-76-46\n"
-            "📘 <a href='https://vk.com/tanya_tlegenova'>ВКонтакте</a>\n"
-            "📩 <a href='https://t.me/tanya_tlegenova'>Telegram</a>\n"
-            "💬 <a href='https://wa.me/79011127646'>WhatsApp</a>\n\n"
-            "👨‍💼 <b>Кеулемжай Тлегенов</b>\n"
-            "📞 Телефон: +7 (953) 455-21-75\n"
-            "📘 <a href='https://vk.com/ktlegenov'>ВКонтакте</a>\n"
-            "📩 <a href='https://t.me/Keulemzhay_Tlegenov'>Telegram</a>\n"
-            "💬 <a href='https://wa.me/79534552175'>WhatsApp</a>\n\n"
-            "Вы можете написать или позвонить любому из преподавателей.\n\n"
+        for group_num, items in groups.items():
+            message = "\n\n".join(
+                f"<b>{q['question']}</b>\n{q['answer']}" for q in items)
+            await update.message.reply_text(message, parse_mode="HTML")
+        return
 
-            "<b>Аккаунты студии BachataManía</b>\n"
-            "<a href='https://t.me/bachata_orsk'>Мы в Telegram</a>\n"
-            "<a href='https://vk.com/bachatamania_56'>Мы в ВК</a>\n"
-            "<a href='https://t.me/+wQ6vcAPYPRVlNTYy'>Женское соло</a>\n"
-            "Подпишись! 😉"
-            
-            ,
-            parse_mode="HTML",
-            disable_web_page_preview=True
-        )
+    if text == "Новый набор и акции":
+        await update.message.reply_text(BOT_DATA["promotions"]["text"], parse_mode="HTML")
+        return
 
+    if text == "Cвязь с нами":
+        await update.message.reply_text(BOT_DATA["contacts"]["text"], parse_mode="HTML", disable_web_page_preview=True)
+        return
 
+    if text == "⬅️ Назад":
+        await start(update, context)
+        return
 
-    else:
-        await update.message.reply_text("Пожалуйста, выберите один из пунктов меню ниже 👇", reply_markup=main_menu_markup)
+    # Обработка произвольного текста
+    response = await process_free_text(text)
+    await update.message.reply_text(response, reply_markup=main_menu_markup, parse_mode="HTML", disable_web_page_preview=True)
 
 
 def create_application():
     application = ApplicationBuilder().token(TOKEN).build()
     application.add_handler(CommandHandler("start", start))
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+    application.add_handler(MessageHandler(
+        filters.TEXT & ~filters.COMMAND, handle_message))
     return application
 
 
 def main():
-    try:
-        application = create_application()
-        logger.info("Запуск бота...")
+    application = create_application()
+    logger.info("Запуск бота...")
+    application.run_polling()
 
-        application.run_polling(
-            poll_interval=3,
-            timeout=30,
-            drop_pending_updates=True
-        )
-
-    except KeyboardInterrupt:
-        logger.info("Бот остановлен вручную")
-
-    except Exception:
-        error_msg = traceback.format_exc()
-        logger.error(f"Ошибка бота:\n{error_msg}")
-        print(f"Ошибка бота:\n{error_msg}")
-        # Без sleep — пусть systemd решает, когда перезапускать
-        raise  # Важно! Исключение поднимается наверх → systemd увидит сбой
 
 if __name__ == "__main__":
     main()
