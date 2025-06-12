@@ -1,4 +1,5 @@
 import os
+import json
 import re
 import logging
 from telegram import Update, ReplyKeyboardMarkup, InputMediaPhoto, InputMediaVideo
@@ -343,6 +344,48 @@ async def process_free_text(text):
 
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    from datetime import datetime
+    import json
+
+    def log_stats(update: Update):
+        stats_file = "stats.json"
+        today = datetime.now().strftime("%Y-%m-%d")
+        user_id = str(update.effective_user.id)
+        text = update.message.text
+
+        try:
+            with open(stats_file, "r", encoding="utf-8") as f:
+                stats = json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError):
+            stats = {}
+
+        if today not in stats:
+            stats[today] = {
+                "new_users": [],
+                "active_users": [],
+                "button_clicks": {},
+            }
+
+        day_stats = stats[today]
+
+        if user_id not in day_stats["active_users"]:
+            day_stats["active_users"].append(user_id)
+
+        if user_id not in day_stats["new_users"]:
+            # Новый пользователь за день
+            # Можно уточнить регистрацию более точно, если нужно
+            day_stats["new_users"].append(user_id)
+
+        if text in day_stats["button_clicks"]:
+            day_stats["button_clicks"][text] += 1
+        else:
+            day_stats["button_clicks"][text] = 1
+
+        with open(stats_file, "w", encoding="utf-8") as f:
+            json.dump(stats, f, ensure_ascii=False, indent=2)
+
+    log_stats(update)
+
     text = update.message.text
     user_data = context.user_data
 
@@ -405,12 +448,61 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     response = await process_free_text(text)
     await update.message.reply_text(response, reply_markup=main_menu_markup, parse_mode="HTML", disable_web_page_preview=True)
 
+async def send_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    admin_id = 1888074242  #  Telegram ID админа
+
+    if update.effective_user.id != admin_id:
+        await update.message.reply_text("⛔ Доступ запрещён.")
+        return
+
+    try:
+        with open("stats.json", "r", encoding="utf-8") as f:
+            stats = json.load(f)
+    except Exception as e:
+        await update.message.reply_text(f"Ошибка чтения stats.json: {e}")
+        return
+
+    if not stats:
+        await update.message.reply_text("Файл stats.json пуст.")
+        return
+
+    dates = sorted(stats.keys(), reverse=True)[:7]
+    report_lines = ["📊 Статистика за последние 7 дней\n"]
+
+    button_totals = {}
+
+    for date in dates:
+        day = stats[date]
+        new = len(day.get("new_users", []))
+        active = len(day.get("active_users", []))
+        total_clicks = sum(day.get("button_clicks", {}).values())
+
+        report_lines.append(
+            f"📅 {date}\n"
+            f"👥 Новые пользователи: {new}\n"
+            f"🔄 Активные пользователи: {active}\n"
+            f"🖱 Нажатий кнопок: {total_clicks}\n"
+        )
+
+        # Суммируем по всем дням
+        for btn, count in day.get("button_clicks", {}).items():
+            button_totals[btn] = button_totals.get(btn, 0) + count
+
+    # Топ кнопок
+    top_buttons = sorted(button_totals.items(), key=lambda x: x[1], reverse=True)[:10]
+    report_lines.append("🔝 Топ-10 кнопок")
+    for btn, count in top_buttons:
+        report_lines.append(f"- {btn}: {count}")
+
+    await update.message.reply_text("\n".join(report_lines))
+
 
 def create_application():
     application = ApplicationBuilder().token(TOKEN).build()
     application.add_handler(CommandHandler("start", start))
     application.add_handler(MessageHandler(
         filters.TEXT & ~filters.COMMAND, handle_message))
+    application.add_handler(CommandHandler("stats", send_stats))
     return application
 
 
