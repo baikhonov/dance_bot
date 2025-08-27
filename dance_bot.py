@@ -1,4 +1,7 @@
 import os
+import sys
+import atexit
+import tempfile
 import json
 import re
 import logging
@@ -15,6 +18,66 @@ logger = logging.getLogger(__name__)
 
 load_dotenv()
 TOKEN = os.getenv("TELEGRAM_TOKEN")
+
+def create_lock_file():
+    """Создает файл блокировки для предотвращения запуска нескольких экземпляров"""
+    # Используем временную директорию пользователя
+    lock_file = os.path.join(tempfile.gettempdir(), "dance_bot.lock")
+    
+    try:
+        # Проверяем, существует ли файл блокировки
+        if os.path.exists(lock_file):
+            # Читаем PID из файла
+            try:
+                with open(lock_file, 'r') as f:
+                    old_pid = int(f.read().strip())
+                
+                # Проверяем, существует ли процесс с этим PID
+                # В Windows используем tasklist, в Linux - os.kill
+                if os.name == 'nt':  # Windows
+                    import subprocess
+                    result = subprocess.run(['tasklist', '/fi', f'PID eq {old_pid}'], 
+                                          capture_output=True, text=True)
+                    if str(old_pid) in result.stdout:
+                        print("❌ Бот уже запущен! Завершаем этот экземпляр.")
+                        sys.exit(1)
+                else:  # Linux (PythonAnywhere)
+                    try:
+                        os.kill(old_pid, 0)  # Проверяем существование процесса
+                        print("❌ Бот уже запущен! Завершаем этот экземпляр.")
+                        sys.exit(1)
+                    except OSError:
+                        # Процесс не существует, продолжаем
+                        pass
+                        
+            except (ValueError, OSError):
+                # Файл поврежден или недоступен, удаляем его
+                try:
+                    os.remove(lock_file)
+                except:
+                    pass
+        
+        # Создаем новый файл блокировки
+        with open(lock_file, 'w') as f:
+            f.write(str(os.getpid()))
+        
+        # Функция для очистки при выходе
+        def cleanup():
+            try:
+                if os.path.exists(lock_file):
+                    # Проверяем, что это наш файл блокировки
+                    with open(lock_file, 'r') as f:
+                        if f.read().strip() == str(os.getpid()):
+                            os.remove(lock_file)
+            except:
+                pass
+        
+        # Регистрируем очистку при выходе
+        atexit.register(cleanup)
+        
+    except Exception as e:
+        print(f"Ошибка при создании lock файла: {e}")
+        # Не завершаем программу, чтобы бот мог работать
 
 # Единая база данных бота
 BOT_DATA = {
@@ -511,6 +574,9 @@ def create_application():
 
 
 def main():
+    # Проверяем, не запущен ли уже бот
+    create_lock_file()
+
     application = create_application()
     logger.info("Запуск бота...")
     application.run_polling()
