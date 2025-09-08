@@ -38,5 +38,8 @@ build/
 # Jupyter Notebook checkpoints
 .ipynb_checkpoints/
 
+# Файл статистики
+stats.json
+
 # Другие временные файлы
 *.swp
