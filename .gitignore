@@ -39,7 +39,7 @@ build/
 .ipynb_checkpoints/
 
 # Файл статистики
-stats.json
+.json
 
 # Другие временные файлы
 *.swp
