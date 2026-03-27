@@ -2,6 +2,7 @@ import os
 import json
 import re
 import logging
+import asyncio
 from telegram import Update, ReplyKeyboardMarkup, InputMediaPhoto, InputMediaVideo
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
 from dotenv import load_dotenv
@@ -504,10 +505,16 @@ def create_application():
 
 
 def main():
+    """Запуск бота"""
     application = create_application()
     logger.info("Запуск бота...")
-    application.run_polling()
-
+    
+    # Запуск с автоматическим перезапуском при ошибках
+    try:
+        application.run_polling()
+    except Exception as e:
+        logger.error(f"Бот остановлен с ошибкой: {e}")
+        raise
 
 if __name__ == "__main__":
     main()

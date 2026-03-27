@@ -38,8 +38,8 @@ build/
 # Jupyter Notebook checkpoints
 .ipynb_checkpoints/
 
-# Файл статистики
-.json
+# Статистика бота (должна создаваться на сервере)
+stats.json
 
 # Другие временные файлы
 *.swp
