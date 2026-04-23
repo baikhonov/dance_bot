@@ -26,9 +26,9 @@ jobs:
           username: root
           key: ${{ secrets.SSH_KEY }}
           script: |
-            cd /home/dance_bot
+            cd /root/dance_bot
             git fetch origin master
             git reset --hard origin/master
             git log -1 --oneline
-            /home/dance_bot/venv/bin/pip install -r requirements.txt
+            /root/dance_bot/venv/bin/pip install -r requirements.txt
             systemctl restart dance_bot
