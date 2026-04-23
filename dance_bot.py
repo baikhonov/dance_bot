@@ -248,6 +248,7 @@ BOT_DATA = {
                 "💬 <a href='https://wa.me/79534552175'>WhatsApp</a>\n\n"
                 "<b>Аккаунты студии BachataManía</b>\n"
                 "<a href='https://t.me/bachata_orsk'>Мы в Telegram</a>\n"
+                "<a href='https://max.ru/join/feq2t2T2QzlWPQycS-pngQW5Jk2IPjO2-7G0VvJ6ziA'>Мы в Max</a>\n"
                 "<a href='https://vk.com/bachatamania_56'>Мы в ВК</a>\n"
                 "<a href='https://t.me/+wQ6vcAPYPRVlNTYy'>Женское соло</a>\n"
                 "Подпишись! 😉",
