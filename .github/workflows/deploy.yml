@@ -4,31 +4,28 @@ on:
   push:
     branches:
       - master
-  workflow_dispatch:   # можно запускать вручную из Actions
+  workflow_dispatch:
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Test SSH Connection
-        uses: appleboy/ssh-action@v1.0.0
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.SERVER_IP }}
           username: root
           key: ${{ secrets.SSH_KEY }}
           debug: true
-          script: whoami
-
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1.0.0
-        with:
-          host: ${{ secrets.SERVER_IP }}
-          username: root
-          key: ${{ secrets.SSH_KEY }}
           script: |
+            echo "Connected to server"
             cd /root/dance_bot
             git fetch origin master
             git reset --hard origin/master
-            git log -1 --oneline
-            /root/dance_bot/venv/bin/pip install -r requirements.txt
-            systemctl restart dance_bot
+            source venv/bin/activate
+            pip install -r requirements.txt
+            systemctl restart dance-bot
+            echo "Deploy complete"
