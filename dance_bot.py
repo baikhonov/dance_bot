@@ -4,8 +4,6 @@ import re
 import logging
 from telegram import (
     Update,
-    InputMediaPhoto,
-    InputMediaVideo,
     InlineKeyboardButton,
     InlineKeyboardMarkup,
     ReplyKeyboardRemove,
@@ -130,7 +128,7 @@ BOT_DATA = {
             },
             {
                 "type": "video",
-                "media": "https://raw.githubusercontent.com/baikhonov/dance_bot/master/assets/address/address_route.mp4",
+                "media": "https://raw.githubusercontent.com/baikhonov/dance_bot/master/assets/address/address_route.MP4",
                 "caption": "Видео маршрута"
             }
         ]
@@ -380,20 +378,20 @@ async def send_location_info_from_query(query):
         reply_markup=get_back_to_main_markup(),
     )
 
-    media_group = []
+    failed_media = []
     for media in address["media"]:
-        if media["type"] == "photo":
-            media_group.append(InputMediaPhoto(media["media"], caption=media["caption"]))
-        else:
-            media_group.append(InputMediaVideo(media["media"], caption=media["caption"]))
+        try:
+            if media["type"] == "photo":
+                await query.message.reply_photo(photo=media["media"], caption=media["caption"])
+            else:
+                await query.message.reply_video(video=media["media"], caption=media["caption"])
+        except BadRequest as error:
+            logger.warning("Не удалось отправить media для адреса (%s): %s", media["media"], error)
+            failed_media.append(media["caption"])
 
-    try:
-        await query.message.reply_media_group(media_group)
-    except BadRequest as error:
-        logger.warning("Не удалось отправить media_group для адреса: %s", error)
+    if failed_media:
         await query.message.reply_text(
-            "Не удалось отправить фото/видео для этого бота.\n"
-            "Нужно заново загрузить медиа в этот бот и обновить file_id.",
+            "Часть медиа не удалось отправить:\n- " + "\n- ".join(failed_media),
             reply_markup=get_back_to_main_markup(),
         )
 
