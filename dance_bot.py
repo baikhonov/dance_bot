@@ -120,17 +120,17 @@ BOT_DATA = {
         "media": [
             {
                 "type": "photo",
-                "media": "AgACAgIAAxkBAAICrGggKvUpLL-bc9e8d46S2fsYTNf7AAL-8TEbCEkAAUnKnJXb1hfUYQEAAwIAA3gAAzYE",
+                "media": "https://raw.githubusercontent.com/baikhonov/dance_bot/master/assets/address/address_front.jpg",
                 "caption": "Фото здания спереди"
             },
             {
                 "type": "photo",
-                "media": "AgACAgIAAxkBAAICs2ggK4fpSXoUpP1WTWQQxOJ3Q75GAAL_8TEbCEkAAUl2lhNGB2y5ogEAAwIAA3kAAzYE",
+                "media": "https://raw.githubusercontent.com/baikhonov/dance_bot/master/assets/address/address_parking.jpg",
                 "caption": "Фото парковки"
             },
             {
                 "type": "video",
-                "media": "BAACAgIAAxkBAAICtWggK7nKjKiCN3WAATvuBuJNrg6CAALCcgACCEkAAUn-A2e8HBdrNTYE",
+                "media": "https://raw.githubusercontent.com/baikhonov/dance_bot/master/assets/address/address_route.mp4",
                 "caption": "Видео маршрута"
             }
         ]
