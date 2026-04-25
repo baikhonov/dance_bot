@@ -2,9 +2,22 @@ import os
 import json
 import re
 import logging
-import asyncio
-from telegram import Update, ReplyKeyboardMarkup, InputMediaPhoto, InputMediaVideo
-from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
+from telegram import (
+    Update,
+    InputMediaPhoto,
+    InputMediaVideo,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    ReplyKeyboardRemove,
+)
+from telegram.ext import (
+    ApplicationBuilder,
+    CommandHandler,
+    MessageHandler,
+    CallbackQueryHandler,
+    ContextTypes,
+    filters,
+)
 from dotenv import load_dotenv
 
 # Настройка логгирования
@@ -253,41 +266,127 @@ BOT_DATA = {
     }
 }
 
-# Клавиатуры
-main_menu_buttons = [
-    ["💸 Цены", "📍 Адрес"],
-    ["📅 Расписание", "❓ Частые вопросы"],
-    ["Новый набор и акции", "Cвязь с нами"]
-]
-main_menu_markup = ReplyKeyboardMarkup(main_menu_buttons, resize_keyboard=True)
+MENU_TO_CATEGORY = {
+    "prices": "prices",
+    "schedule": "schedule",
+    "address": "address",
+    "faq": "faq",
+    "promo": "promotions",
+    "contacts": "contacts",
+}
 
-direction_buttons = [
-    ["💃🕺 Танцы в паре", "👠 Женский стиль"],
-    ["🧑‍🏫 Индивидуальные занятия"],
-    ["⬅️ Назад"]
-]
-direction_markup = ReplyKeyboardMarkup(direction_buttons, resize_keyboard=True)
+DIRECTION_LABELS = {
+    "couple": "💃🕺 Танцы в паре",
+    "solo": "👠 Женский стиль",
+    "individual": "🧑‍🏫 Индивидуальные занятия",
+}
+
+
+def get_main_menu_markup():
+    return InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton("💸 Цены", callback_data="menu:prices"),
+            InlineKeyboardButton("📍 Адрес", callback_data="menu:address"),
+        ],
+        [
+            InlineKeyboardButton("📅 Расписание", callback_data="menu:schedule"),
+            InlineKeyboardButton("❓ Частые вопросы", callback_data="menu:faq:1"),
+        ],
+        [
+            InlineKeyboardButton("Новый набор и акции", callback_data="menu:promo"),
+            InlineKeyboardButton("Cвязь с нами", callback_data="menu:contacts"),
+        ],
+    ])
+
+
+def get_direction_markup(menu_type):
+    return InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton(
+                DIRECTION_LABELS["couple"], callback_data=f"dir:{menu_type}:couple"),
+        ],
+        [
+            InlineKeyboardButton(
+                DIRECTION_LABELS["solo"], callback_data=f"dir:{menu_type}:solo"),
+        ],
+        [
+            InlineKeyboardButton(
+                DIRECTION_LABELS["individual"], callback_data=f"dir:{menu_type}:individual"),
+        ],
+        [InlineKeyboardButton("⬅️ Назад", callback_data="nav:main")],
+    ])
+
+
+def get_back_to_main_markup():
+    return InlineKeyboardMarkup(
+        [[InlineKeyboardButton("⬅️ Назад в меню", callback_data="nav:main")]]
+    )
+
+
+def get_faq_group_items(group_number):
+    grouped = {}
+    for item in BOT_DATA["faq"]["items"]:
+        group = item.get("group", 1)
+        grouped.setdefault(group, []).append(item)
+    return grouped, grouped.get(group_number, [])
+
+
+def build_faq_text(group_number):
+    grouped, group_items = get_faq_group_items(group_number)
+    if not group_items:
+        return "Раздел FAQ пока пуст."
+
+    message = "\n\n".join(f"<b>{q['question']}</b>\n{q['answer']}" for q in group_items)
+    return f"❓ Частые вопросы (блок {group_number}/{len(grouped)})\n\n{message}"
+
+
+def get_faq_markup(current_group):
+    grouped, _ = get_faq_group_items(current_group)
+    groups = sorted(grouped.keys())
+    row = []
+    idx = groups.index(current_group) if current_group in groups else 0
+
+    if idx > 0:
+        prev_group = groups[idx - 1]
+        row.append(InlineKeyboardButton("⬅️ Предыдущий", callback_data=f"menu:faq:{prev_group}"))
+    if idx < len(groups) - 1:
+        next_group = groups[idx + 1]
+        row.append(InlineKeyboardButton("Следующий ➡️", callback_data=f"menu:faq:{next_group}"))
+
+    rows = [row] if row else []
+    rows.append([InlineKeyboardButton("⬅️ Назад в меню", callback_data="nav:main")])
+    return InlineKeyboardMarkup(rows)
+
+
+def render_direction_response(menu_type, direction_key):
+    data = BOT_DATA[MENU_TO_CATEGORY[menu_type]][direction_key]
+    message = f"{data['title']}:\n\n" + "\n".join(data["items"])
+    return message
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data.clear()
-    await update.message.reply_text("Выберите пункт меню:", reply_markup=main_menu_markup)
+    await update.message.reply_text("Обновляю меню...", reply_markup=ReplyKeyboardRemove())
+    await update.message.reply_text("Выберите пункт меню:", reply_markup=get_main_menu_markup())
 
 
-async def send_location_info(update: Update):
+async def send_location_info_from_query(query):
     address = BOT_DATA["address"]
-    await update.message.reply_text(address["text"], parse_mode="HTML", disable_web_page_preview=True)
+    await query.edit_message_text(
+        address["text"],
+        parse_mode="HTML",
+        disable_web_page_preview=True,
+        reply_markup=get_back_to_main_markup(),
+    )
 
     media_group = []
     for media in address["media"]:
         if media["type"] == "photo":
-            media_group.append(InputMediaPhoto(
-                media["media"], caption=media["caption"]))
+            media_group.append(InputMediaPhoto(media["media"], caption=media["caption"]))
         else:
-            media_group.append(InputMediaVideo(
-                media["media"], caption=media["caption"]))
+            media_group.append(InputMediaVideo(media["media"], caption=media["caption"]))
 
-    await update.message.reply_media_group(media_group)
+    await query.message.reply_media_group(media_group)
 
 
 async def process_free_text(text):
@@ -383,66 +482,95 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     log_stats(update)
 
     text = update.message.text
-    user_data = context.user_data
-
-    # Обработка кнопок главного меню
-    if text in ["💸 Цены", "📅 Расписание"]:
-        user_data["menu"] = text
-        await update.message.reply_text("Выберите направление:", reply_markup=direction_markup)
-        return
-
-    # Обработка кнопок направлений
-    if text in ["💃🕺 Танцы в паре", "👠 Женский стиль", "🧑‍🏫 Индивидуальные занятия"]:
-        user_data["direction"] = text
-        menu = user_data.get("menu")
-
-        if menu == "💸 Цены":
-            direction_key = "couple" if text == "💃🕺 Танцы в паре" else "solo" if text == "👠 Женский стиль" else "individual"
-            data = BOT_DATA["prices"][direction_key]
-            await update.message.reply_text("\n".join(data["items"]))
-        elif menu == "📅 Расписание":
-            direction_key = "couple" if text == "💃🕺 Танцы в паре" else "solo" if text == "👠 Женский стиль" else "individual"
-            if direction_key in BOT_DATA["schedule"]:
-                data = BOT_DATA["schedule"][direction_key]
-                await update.message.reply_text("\n".join(data["items"]),
-                                                parse_mode='HTML',
-                                                disable_web_page_preview=True)
-        return
-
-    # Обработка других кнопок
-    if text == "📍 Адрес":
-        await send_location_info(update)
-        return
-
-    if text == "❓ Частые вопросы":
-        groups = {}
-        for item in BOT_DATA["faq"]["items"]:
-            group = item.get("group", 1)
-            if group not in groups:
-                groups[group] = []
-            groups[group].append(item)
-
-        for group_num, items in groups.items():
-            message = "\n\n".join(
-                f"<b>{q['question']}</b>\n{q['answer']}" for q in items)
-            await update.message.reply_text(message, parse_mode="HTML", disable_web_page_preview=True)
-        return
-
-    if text == "Новый набор и акции":
-        await update.message.reply_text(BOT_DATA["promotions"]["text"], parse_mode="HTML")
-        return
-
-    if text == "Cвязь с нами":
-        await update.message.reply_text(BOT_DATA["contacts"]["text"], parse_mode="HTML", disable_web_page_preview=True)
-        return
-
-    if text == "⬅️ Назад":
-        await start(update, context)
-        return
-
     # Обработка произвольного текста
     response = await process_free_text(text)
-    await update.message.reply_text(response, reply_markup=main_menu_markup, parse_mode="HTML", disable_web_page_preview=True)
+    await update.message.reply_text(
+        response,
+        parse_mode="HTML",
+        disable_web_page_preview=True,
+        reply_markup=get_main_menu_markup(),
+    )
+
+
+async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    callback_data = query.data
+
+    if callback_data == "nav:main":
+        context.user_data.clear()
+        await query.edit_message_text("Выберите пункт меню:", reply_markup=get_main_menu_markup())
+        return
+
+    if callback_data in ("menu:prices", "menu:schedule"):
+        menu_type = callback_data.split(":")[1]
+        context.user_data["menu_type"] = menu_type
+        await query.edit_message_text("Выберите направление:", reply_markup=get_direction_markup(menu_type))
+        return
+
+    if callback_data.startswith("dir:"):
+        parts = callback_data.split(":")
+        if len(parts) != 3:
+            await query.edit_message_text(
+                "Эта кнопка устарела. Откройте меню заново.",
+                reply_markup=get_back_to_main_markup(),
+            )
+            return
+
+        _, menu_type, direction_key = parts
+        if menu_type not in ("prices", "schedule") or direction_key not in DIRECTION_LABELS:
+            await query.edit_message_text(
+                "Эта кнопка устарела. Откройте меню заново.",
+                reply_markup=get_back_to_main_markup(),
+            )
+            return
+
+        response_text = render_direction_response(menu_type, direction_key)
+        await query.edit_message_text(
+            response_text,
+            parse_mode="HTML",
+            disable_web_page_preview=True,
+            reply_markup=get_direction_markup(menu_type),
+        )
+        return
+
+    if callback_data == "menu:address":
+        await send_location_info_from_query(query)
+        return
+
+    if callback_data.startswith("menu:faq"):
+        parts = callback_data.split(":")
+        current_group = int(parts[2]) if len(parts) > 2 and parts[2].isdigit() else 1
+        await query.edit_message_text(
+            build_faq_text(current_group),
+            parse_mode="HTML",
+            disable_web_page_preview=True,
+            reply_markup=get_faq_markup(current_group),
+        )
+        return
+
+    if callback_data == "menu:promo":
+        await query.edit_message_text(
+            BOT_DATA["promotions"]["text"],
+            parse_mode="HTML",
+            disable_web_page_preview=True,
+            reply_markup=get_back_to_main_markup(),
+        )
+        return
+
+    if callback_data == "menu:contacts":
+        await query.edit_message_text(
+            BOT_DATA["contacts"]["text"],
+            parse_mode="HTML",
+            disable_web_page_preview=True,
+            reply_markup=get_back_to_main_markup(),
+        )
+        return
+
+    await query.edit_message_text(
+        "Неизвестная команда меню. Откройте меню заново.",
+        reply_markup=get_back_to_main_markup(),
+    )
 
 async def send_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     admin_id = 1888074242  #  Telegram ID админа
@@ -496,6 +624,7 @@ async def send_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
 def create_application():
     application = ApplicationBuilder().token(TOKEN).build()
     application.add_handler(CommandHandler("start", start))
+    application.add_handler(CallbackQueryHandler(handle_callback_query))
     application.add_handler(MessageHandler(
         filters.TEXT & ~filters.COMMAND, handle_message))
     application.add_handler(CommandHandler("stats", send_stats))
