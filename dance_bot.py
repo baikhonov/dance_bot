@@ -394,6 +394,12 @@ async def send_location_info_from_query(query):
             "Часть медиа не удалось отправить:\n- " + "\n- ".join(failed_media),
             reply_markup=get_back_to_main_markup(),
         )
+        return
+
+    await query.message.reply_text(
+        "Медиа отправлены. Можно вернуться в главное меню:",
+        reply_markup=get_back_to_main_markup(),
+    )
 
 
 async def process_free_text(text):
