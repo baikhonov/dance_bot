@@ -118,17 +118,17 @@ BOT_DATA = {
         "media": [
             {
                 "type": "photo",
-                "media": "https://raw.githubusercontent.com/baikhonov/dance_bot/master/assets/address/address_front.jpg",
+                "media": "https://cdn.jsdelivr.net/gh/baikhonov/dance_bot@master/assets/address/address_front.jpg",
                 "caption": "Фото здания спереди"
             },
             {
                 "type": "photo",
-                "media": "https://raw.githubusercontent.com/baikhonov/dance_bot/master/assets/address/address_parking.jpg",
+                "media": "https://cdn.jsdelivr.net/gh/baikhonov/dance_bot@master/assets/address/address_parking.jpg",
                 "caption": "Фото парковки"
             },
             {
                 "type": "video",
-                "media": "https://raw.githubusercontent.com/baikhonov/dance_bot/master/assets/address/address_route.MP4",
+                "media": "https://cdn.jsdelivr.net/gh/baikhonov/dance_bot@master/assets/address/address_route.MP4",
                 "caption": "Видео маршрута"
             }
         ]
