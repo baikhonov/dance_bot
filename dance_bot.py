@@ -4,8 +4,6 @@ import re
 import logging
 from telegram import (
     Update,
-    InputMediaPhoto,
-    InputMediaVideo,
     InlineKeyboardButton,
     InlineKeyboardMarkup,
     ReplyKeyboardRemove,
@@ -108,6 +106,7 @@ BOT_DATA = {
                 "• <a href='https://yandex.ru/maps/-/CHrLEEO7'>Яндекс Карты</a>\n"
                 "• <a href='https://maps.app.goo.gl/gAY7vvHBx5CbuKbB7'>Google Карты</a>\n"
                 "• <a href='https://go.2gis.com/p3kDs'>2ГИС</a>\n\n"
+                "📸 Фото входа и парковки, а также 🎥 видео маршрута отправим по запросу у администратора.\n\n"
                 "🚖 <b>Маршруты общественного транспорта:</b>\n"
                 "1️⃣ Автобусы: <b>3, 4, 6, 30</b>\n"
                 "Маршрутки: <b>16, 16А, 23А, 24, 25, 25Б, 26, 26А, 37, 38, 44, 55</b>\n"
@@ -378,15 +377,6 @@ async def send_location_info_from_query(query):
         disable_web_page_preview=True,
         reply_markup=get_back_to_main_markup(),
     )
-
-    media_group = []
-    for media in address["media"]:
-        if media["type"] == "photo":
-            media_group.append(InputMediaPhoto(media["media"], caption=media["caption"]))
-        else:
-            media_group.append(InputMediaVideo(media["media"], caption=media["caption"]))
-
-    await query.message.reply_media_group(media_group)
 
 
 async def process_free_text(text):
