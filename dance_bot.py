@@ -396,10 +396,7 @@ async def send_location_info_from_query(query):
         )
         return
 
-    await query.message.reply_text(
-        "Медиа отправлены. Можно вернуться в главное меню:",
-        reply_markup=get_back_to_main_markup(),
-    )
+    await query.message.reply_text("\u2060", reply_markup=get_back_to_main_markup())
 
 
 async def process_free_text(text):
