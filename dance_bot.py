@@ -6,6 +6,8 @@ from telegram import (
     Update,
     InlineKeyboardButton,
     InlineKeyboardMarkup,
+    InputMediaPhoto,
+    InputMediaVideo,
     ReplyKeyboardRemove,
 )
 from telegram.error import BadRequest
@@ -371,23 +373,26 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def send_location_info_from_query(query):
     address = BOT_DATA["address"]
-    await query.edit_message_text(
-        address["text"],
-        parse_mode="HTML",
-        disable_web_page_preview=True,
-        reply_markup=get_back_to_main_markup(),
-    )
+    await query.edit_message_reply_markup(reply_markup=None)
+
+    media_group = []
+    for media in address["media"]:
+        if media["type"] == "photo":
+            media_group.append(
+                InputMediaPhoto(media=media["media"], caption=media.get("caption", ""))
+            )
+        elif media["type"] == "video":
+            media_group.append(
+                InputMediaVideo(media=media["media"], caption=media.get("caption", ""))
+            )
 
     failed_media = []
-    for media in address["media"]:
-        try:
-            if media["type"] == "photo":
-                await query.message.reply_photo(photo=media["media"], caption=media["caption"])
-            else:
-                await query.message.reply_video(video=media["media"], caption=media["caption"])
-        except BadRequest as error:
-            logger.warning("Не удалось отправить media для адреса (%s): %s", media["media"], error)
-            failed_media.append(media["caption"])
+    try:
+        if media_group:
+            await query.message.reply_media_group(media=media_group)
+    except BadRequest as error:
+        logger.warning("Не удалось отправить media-group для адреса: %s", error)
+        failed_media = [item.get("caption", "Без подписи") for item in address["media"]]
 
     if failed_media:
         await query.message.reply_text(
@@ -396,7 +401,12 @@ async def send_location_info_from_query(query):
         )
         return
 
-    await query.message.reply_text("\u2060", reply_markup=get_back_to_main_markup())
+    await query.message.reply_text(
+        address["text"],
+        parse_mode="HTML",
+        disable_web_page_preview=True,
+        reply_markup=get_back_to_main_markup(),
+    )
 
 
 async def process_free_text(text):

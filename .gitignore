@@ -1,7 +1,9 @@
 .env
 
+
 # Виртуальное окружение
 venv/
+.venv/
 
 # Файлы Python кэша
 __pycache__/
