@@ -8,7 +8,7 @@ Telegram bot для студии танцев BachataMania
 3. При необходимости установите зависимости:
    - `pip install python-telegram-bot python-dotenv`
 4. Запустите бота:
-   - `python dance_bot.py`
+   - `python main.py`
 5. Проверьте работу в Telegram:
    - откройте вашего бота;
    - отправьте `/start`;
